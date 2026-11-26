@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Noto_Sans_Devanagari } from "next/font/google";
 import { Toaster } from "sonner";
+import { env } from "@/lib/env";
 import "./globals.css";
 
 const inter = Inter({
@@ -17,6 +18,7 @@ const notoDevanagari = Noto_Sans_Devanagari({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(env.siteUrl),
   title: {
     default: "धमाका 24*7 | मध्य प्रदेश, देश और दुनिया की ताजा खबरें",
     template: "%s | धमाका 24*7",
