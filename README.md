@@ -37,11 +37,11 @@ A production-ready Hindi/English news website with a regional news layout, built
    Paste the output into `ADMIN_PASSWORD_HASH` in `.env` and set `ADMIN_EMAIL`.
    *(If `ADMIN_PASSWORD_HASH` is left empty in dev, `npm run seed` defaults to `Admin@123456`.)*
 
-4. **Set up Anthropic API Key (for AI Editorial Features):**
-   - Get an API key from [https://console.anthropic.com/](https://console.anthropic.com/).
-   - Set `ANTHROPIC_API_KEY="sk-ant-..."` in `.env`.
-   - Optionally customize `AI_MODEL` (defaults to `claude-sonnet-5-5`) and `AI_DAILY_LIMIT` (defaults to `200`).
-   - If `ANTHROPIC_API_KEY` is omitted, AI buttons are gracefully disabled and the rest of the site runs normally.
+4. **Set up AI Editorial Features (Free Google Gemini OR Paid Anthropic Claude):**
+   - **Free Option (Recommended):** Get a free-tier API key from [Google AI Studio](https://aistudio.google.com/apikey) (no credit card needed) and set `GEMINI_API_KEY="AIza..."` in `.env` (`GEMINI_MODEL` defaults to `gemini-4-hydrogen`).
+   - **Anthropic Option:** Get an API key from [https://console.anthropic.com/](https://console.anthropic.com/) and set `ANTHROPIC_API_KEY="sk-ant-..."` (`AI_MODEL` defaults to `claude-sonnet-5-5`).
+   - Optionally customize `AI_DAILY_LIMIT` (defaults to `200`).
+   - If neither key is set, AI buttons are gracefully disabled and the rest of the site runs normally.
 
 5. **Run database migrations and seed sample data:**
    ```bash

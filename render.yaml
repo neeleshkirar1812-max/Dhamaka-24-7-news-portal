@@ -28,10 +28,16 @@ services:
         value: admin@newsportal.in
       - key: ADMIN_PASSWORD_HASH
         sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-4-hydrogen
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: AI_MODEL
         value: claude-sonnet-5-5
+      - key: AI_PROVIDER
+        value: auto
       - key: AI_DAILY_LIMIT
         value: "200"
       - key: ADSENSE_CLIENT_ID

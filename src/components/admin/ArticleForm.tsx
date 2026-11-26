@@ -112,7 +112,7 @@ export function ArticleForm({
 
   const aiAvailable = aiStatus.configured && aiStatus.enabled && !aiStatus.limitReached;
   const aiDisabledReason = !aiStatus.configured
-    ? "ANTHROPIC_API_KEY is not configured"
+    ? "Set GEMINI_API_KEY (free tier) or ANTHROPIC_API_KEY"
     : !aiStatus.enabled
     ? "AI is disabled in Site Settings"
     : aiStatus.limitReached

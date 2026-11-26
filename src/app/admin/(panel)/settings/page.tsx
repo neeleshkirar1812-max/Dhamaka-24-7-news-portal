@@ -21,6 +21,7 @@ export default function AdminSettingsPage() {
     configured: boolean;
     todayCalls: number;
     dailyLimit: number;
+    provider: string;
     model: string;
   } | null>(null);
   const [saving, setSaving] = useState(false);
@@ -128,8 +129,13 @@ export default function AdminSettingsPage() {
         </h2>
         {aiStatus && (
           <div className="text-xs bg-slate-50 border border-slate-200 rounded-lg p-3 text-slate-700">
-            API Key: <strong>{aiStatus.configured ? "Configured" : "Missing (ANTHROPIC_API_KEY)"}</strong> · Model:{" "}
-            <strong>{aiStatus.model}</strong> · Today&apos;s Calls:{" "}
+            API Key:{" "}
+            <strong>
+              {aiStatus.configured
+                ? `Configured (${aiStatus.provider})`
+                : "Missing (set GEMINI_API_KEY or ANTHROPIC_API_KEY)"}
+            </strong>{" "}
+            · Model: <strong>{aiStatus.model}</strong> · Today&apos;s Calls:{" "}
             <strong>{aiStatus.todayCalls} / {aiStatus.dailyLimit}</strong>
           </div>
         )}

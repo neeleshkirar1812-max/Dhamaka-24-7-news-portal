@@ -2,7 +2,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { sanitizeArticleHtml, stripHtml } from "@/lib/sanitize";
 import { slugify } from "@/lib/slugify";
-import { callClaudeStructured } from "./client";
+import { callAiStructured } from "./client";
 import { PROMPTS } from "./prompts";
 import {
   AiCategoryInputSchema,
@@ -47,7 +47,7 @@ export async function aiRewriteText(input: z.infer<typeof AiRewriteInputSchema>)
   const langNote = data.language === "auto" ? "Match input language." : `Output in ${data.language === "hi" ? "Hindi (Devanagari)" : "English"}.`;
   const userContent = `Action: ${actionInstructions[data.action]}\n${langNote}\n\n${wrapUntrusted("selection", data.text)}`;
 
-  const result = await callClaudeStructured({
+  const result = await callAiStructured({
     feature: `rewrite:${data.action}`,
     system: PROMPTS.rewrite,
     userContent,
@@ -63,7 +63,7 @@ export async function aiGenerateSeoPack(input: z.infer<typeof AiSeoPackInputSche
   const plainBody = stripHtml(data.content).slice(0, 6000);
   const langNote = data.language === "auto" ? "Match article language." : `Output in ${data.language === "hi" ? "Hindi" : "English"}.`;
 
-  const result = await callClaudeStructured({
+  const result = await callAiStructured({
     feature: "seo_pack",
     system: PROMPTS.seoPack,
     userContent: `${langNote}\n\n${wrapUntrusted("title", data.title)}\n\n${wrapUntrusted("body", plainBody)}`,
@@ -82,7 +82,7 @@ export async function aiSuggestHeadlines(input: z.infer<typeof AiHeadlinesInputS
   const plainBody = stripHtml(data.content).slice(0, 5000);
   const langNote = data.language === "auto" ? "Match article language." : `Output in ${data.language === "hi" ? "Hindi" : "English"}.`;
 
-  return callClaudeStructured({
+  return callAiStructured({
     feature: "headlines",
     system: PROMPTS.headlines,
     userContent: `${langNote}\n\n${wrapUntrusted("current_title", data.title)}\n\n${wrapUntrusted("body", plainBody)}`,
@@ -99,7 +99,7 @@ export async function aiSuggestCategory(input: z.infer<typeof AiCategoryInputSch
   });
 
   const plainBody = stripHtml(data.content).slice(0, 4000);
-  const result = await callClaudeStructured({
+  const result = await callAiStructured({
     feature: "suggest_category",
     system: PROMPTS.category,
     userContent: `Available categories JSON:\n${JSON.stringify(categories)}\n\n${wrapUntrusted("title", data.title)}\n\n${wrapUntrusted("body", plainBody)}`,
@@ -129,7 +129,7 @@ export async function aiTranslateArticle(input: z.infer<typeof AiTranslateInputS
   }
 
   const targetLabel = data.targetLanguage === "hi" ? "Hindi (Devanagari)" : "English";
-  const result = await callClaudeStructured({
+  const result = await callAiStructured({
     feature: `translate:${data.targetLanguage}`,
     system: PROMPTS.translate,
     userContent: `Target language: ${targetLabel}\n\n${wrapUntrusted("title", article.title)}\n${wrapUntrusted("subtitle", article.subtitle ?? "")}\n${wrapUntrusted("excerpt", article.excerpt ?? "")}\n${wrapUntrusted("content_html", article.content.slice(0, 14000))}`,
@@ -147,7 +147,7 @@ export async function aiDraftFromNotes(input: z.infer<typeof AiDraftFromNotesInp
   const data = AiDraftFromNotesInputSchema.parse(input);
   const langLabel = data.language === "hi" ? "Hindi (Devanagari)" : "English";
 
-  const result = await callClaudeStructured({
+  const result = await callAiStructured({
     feature: "draft_from_notes",
     system: PROMPTS.draftFromNotes,
     userContent: `Output language: ${langLabel}\n\n${wrapUntrusted("press_notes", data.notes)}`,
@@ -165,25 +165,13 @@ export async function aiSuggestImageAltCaption(input: z.infer<typeof AiImageAltI
   const data = AiImageAltInputSchema.parse(input);
   const langLabel = data.language === "hi" ? "Hindi (Devanagari)" : "English";
 
-  // Build vision block if URL is public HTTP(S), otherwise fall back to context-only prompt
-  const isRemoteHttp = /^https?:\/\//i.test(data.imageUrl);
-  const userContent = isRemoteHttp
-    ? [
-        {
-          type: "image" as const,
-          source: { type: "url" as const, url: data.imageUrl },
-        },
-        {
-          type: "text" as const,
-          text: `Language: ${langLabel}\n${wrapUntrusted("article_context", data.contextTitle)}`,
-        },
-      ]
-    : `Language: ${langLabel}\nImage filename/path: ${data.imageUrl}\n${wrapUntrusted("article_context", data.contextTitle)}`;
-
-  return callClaudeStructured({
+  return callAiStructured({
     feature: "image_alt_caption",
     system: PROMPTS.imageAlt,
-    userContent,
+    userContent: {
+      imageUrl: data.imageUrl,
+      text: `Language: ${langLabel}\n${wrapUntrusted("article_context", data.contextTitle)}`,
+    },
     schema: AiImageAltOutputSchema,
     maxTokens: 400,
   });
@@ -194,7 +182,7 @@ export async function aiGenerateTickerLine(input: z.infer<typeof AiTickerInputSc
   const langNote = data.language === "auto" ? "Match article language." : `Output in ${data.language === "hi" ? "Hindi" : "English"}.`;
   const plainBody = stripHtml(data.content).slice(0, 2000);
 
-  return callClaudeStructured({
+  return callAiStructured({
     feature: "ticker_line",
     system: PROMPTS.ticker,
     userContent: `${langNote}\n\n${wrapUntrusted("title", data.title)}\n${wrapUntrusted("body", plainBody)}`,
@@ -208,7 +196,7 @@ export async function aiGenerateSummary(input: z.infer<typeof AiSummaryInputSche
   const langNote = data.language === "auto" ? "Match article language." : `Output in ${data.language === "hi" ? "Hindi" : "English"}.`;
   const plainBody = stripHtml(data.content).slice(0, 8000);
 
-  const result = await callClaudeStructured({
+  const result = await callAiStructured({
     feature: "summary",
     system: PROMPTS.summary,
     userContent: `${langNote}\n\n${wrapUntrusted("title", data.title)}\n\n${wrapUntrusted("body", plainBody)}`,
@@ -223,7 +211,7 @@ export async function aiGenerateSummary(input: z.infer<typeof AiSummaryInputSche
 }
 
 export async function aiGenerateRevenueInsights(aggregatedMetrics: Record<string, unknown>) {
-  return callClaudeStructured({
+  return callAiStructured({
     feature: "revenue_insights",
     system: PROMPTS.revenueInsights,
     userContent: `Aggregated ad & revenue metrics (no PII):\n${JSON.stringify(aggregatedMetrics)}`,
