@@ -24,55 +24,80 @@ export type AiUserInput =
       imageUrl?: string;
     };
 
-let cachedAnthropic: Anthropic | null = null;
-let cachedGemini: GoogleGenAI | null = null;
+let cachedAnthropic: { key: string; client: Anthropic } | null = null;
+let cachedGemini: { key: string; client: GoogleGenAI } | null = null;
 
-function resolveProvider(): { provider: "gemini" | "anthropic" | null; model: string } {
-  if (env.aiProvider === "gemini" && env.geminiApiKey) {
-    return { provider: "gemini", model: env.geminiModel };
+async function getStoredAiKeys(): Promise<{ geminiKey: string; anthropicKey: string }> {
+  if (env.geminiApiKey && env.anthropicApiKey) {
+    return {
+      geminiKey: env.geminiApiKey,
+      anthropicKey: env.anthropicApiKey,
+    };
   }
-  if (env.aiProvider === "anthropic" && env.anthropicApiKey) {
-    return { provider: "anthropic", model: env.aiModel };
-  }
-  if (env.geminiApiKey) {
-    return { provider: "gemini", model: env.geminiModel };
-  }
-  if (env.anthropicApiKey) {
-    return { provider: "anthropic", model: env.aiModel };
-  }
-  return { provider: null, model: env.geminiModel };
+  const rows = await prisma.setting.findMany({
+    where: { key: { in: ["geminiApiKey", "anthropicApiKey"] } },
+  });
+  const map = Object.fromEntries(rows.map((r) => [r.key, r.value.trim()]));
+  return {
+    geminiKey: env.geminiApiKey || map.geminiApiKey || "",
+    anthropicKey: env.anthropicApiKey || map.anthropicApiKey || "",
+  };
 }
 
-function getAnthropicClient(): Anthropic {
+function resolveProvider(keys: { geminiKey: string; anthropicKey: string }): {
+  provider: "gemini" | "anthropic" | null;
+  model: string;
+  apiKey: string;
+} {
+  if (env.aiProvider === "gemini" && keys.geminiKey) {
+    return { provider: "gemini", model: env.geminiModel, apiKey: keys.geminiKey };
+  }
+  if (env.aiProvider === "anthropic" && keys.anthropicKey) {
+    return { provider: "anthropic", model: env.aiModel, apiKey: keys.anthropicKey };
+  }
+  if (keys.geminiKey) {
+    return { provider: "gemini", model: env.geminiModel, apiKey: keys.geminiKey };
+  }
+  if (keys.anthropicKey) {
+    return { provider: "anthropic", model: env.aiModel, apiKey: keys.anthropicKey };
+  }
+  return { provider: null, model: env.geminiModel, apiKey: "" };
+}
+
+function getAnthropicClient(apiKey: string): Anthropic {
   if (typeof window !== "undefined") {
     throw new Error("AI client must only be used on the server.");
   }
-  if (!cachedAnthropic) {
-    cachedAnthropic = new Anthropic({
-      apiKey: env.anthropicApiKey,
-      timeout: 30_000,
-    });
+  if (!cachedAnthropic || cachedAnthropic.key !== apiKey) {
+    cachedAnthropic = {
+      key: apiKey,
+      client: new Anthropic({
+        apiKey,
+        timeout: 30_000,
+      }),
+    };
   }
-  return cachedAnthropic;
+  return cachedAnthropic.client;
 }
 
-function getGeminiClient(): GoogleGenAI {
+function getGeminiClient(apiKey: string): GoogleGenAI {
   if (typeof window !== "undefined") {
     throw new Error("AI client must only be used on the server.");
   }
-  if (!cachedGemini) {
-    cachedGemini = new GoogleGenAI({
-      apiKey: env.geminiApiKey,
-    });
+  if (!cachedGemini || cachedGemini.key !== apiKey) {
+    cachedGemini = {
+      key: apiKey,
+      client: new GoogleGenAI({ apiKey }),
+    };
   }
-  return cachedGemini;
+  return cachedGemini.client;
 }
 
 export async function getAiStatus() {
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
 
-  const [enabledSetting, limitSetting, todayCalls, todayAgg] = await Promise.all([
+  const [enabledSetting, limitSetting, todayCalls, todayAgg, keys] = await Promise.all([
     prisma.setting.findUnique({ where: { key: "aiEnabled" } }),
     prisma.setting.findUnique({ where: { key: "aiDailyLimit" } }),
     prisma.aiLog.count({ where: { createdAt: { gte: startOfDay } } }),
@@ -80,9 +105,10 @@ export async function getAiStatus() {
       where: { createdAt: { gte: startOfDay } },
       _sum: { inputTokens: true, outputTokens: true },
     }),
+    getStoredAiKeys(),
   ]);
 
-  const resolved = resolveProvider();
+  const resolved = resolveProvider(keys);
   const hasKey = resolved.provider !== null;
   const settingEnabled = enabledSetting ? enabledSetting.value !== "false" : true;
   const dailyLimit = limitSetting
@@ -103,7 +129,7 @@ export async function getAiStatus() {
 }
 
 async function assertAiReady() {
-  const status = await getAiStatus();
+  const [status, keys] = await Promise.all([getAiStatus(), getStoredAiKeys()]);
   if (!status.configured) {
     throw new AiServiceError(
       "AI assistant is disabled: set GEMINI_API_KEY (free tier) or ANTHROPIC_API_KEY.",
@@ -121,7 +147,8 @@ async function assertAiReady() {
       429
     );
   }
-  return status;
+  const resolved = resolveProvider(keys);
+  return { ...status, apiKey: resolved.apiKey };
 }
 
 function extractJsonText(raw: string): string {
@@ -149,6 +176,7 @@ async function loadLocalImageBase64(urlPath: string): Promise<{ data: string; mi
 }
 
 async function callGeminiText({
+  apiKey,
   feature,
   model,
   system,
@@ -156,6 +184,7 @@ async function callGeminiText({
   maxTokens,
   retryFrom,
 }: {
+  apiKey: string;
   feature: string;
   model: string;
   system: string;
@@ -163,7 +192,7 @@ async function callGeminiText({
   maxTokens: number;
   retryFrom?: string;
 }): Promise<string> {
-  const gemini = getGeminiClient();
+  const gemini = getGeminiClient(apiKey);
 
   const textPrompt = typeof userInput === "string" ? userInput : userInput.text;
   const finalPrompt = retryFrom
@@ -253,6 +282,7 @@ async function callGeminiText({
 }
 
 async function callAnthropicText({
+  apiKey,
   feature,
   model,
   system,
@@ -260,6 +290,7 @@ async function callAnthropicText({
   maxTokens,
   retryFrom,
 }: {
+  apiKey: string;
   feature: string;
   model: string;
   system: string;
@@ -267,7 +298,7 @@ async function callAnthropicText({
   maxTokens: number;
   retryFrom?: string;
 }): Promise<string> {
-  const client = getAnthropicClient();
+  const client = getAnthropicClient(apiKey);
 
   let userContent: Anthropic.Messages.MessageParam["content"];
   if (typeof userInput === "string") {
@@ -344,6 +375,7 @@ export async function callAiStructured<T>({
   const invoke = (retryFrom?: string) =>
     status.provider === "gemini"
       ? callGeminiText({
+          apiKey: status.apiKey,
           feature,
           model: status.model,
           system,
@@ -352,6 +384,7 @@ export async function callAiStructured<T>({
           retryFrom,
         })
       : callAnthropicText({
+          apiKey: status.apiKey,
           feature,
           model: status.model,
           system,

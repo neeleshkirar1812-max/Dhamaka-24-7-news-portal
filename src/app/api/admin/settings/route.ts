@@ -18,6 +18,8 @@ const ALLOWED_KEYS = [
   "aiDailyLimit",
 ] as const;
 
+const SECRET_WRITE_KEYS = ["geminiApiKey", "anthropicApiKey"] as const;
+
 export async function GET() {
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -50,8 +52,20 @@ export async function POST(req: Request) {
       }
     }
 
+    for (const secretKey of SECRET_WRITE_KEYS) {
+      const val = body[secretKey]?.trim();
+      if (val) {
+        await prisma.setting.upsert({
+          where: { key: secretKey },
+          update: { value: val },
+          create: { key: secretKey, value: val },
+        });
+      }
+    }
+
     revalidatePath("/");
-    return NextResponse.json({ ok: true });
+    const aiStatus = await getAiStatus();
+    return NextResponse.json({ ok: true, aiStatus });
   } catch {
     return NextResponse.json({ error: "Invalid settings payload" }, { status: 400 });
   }

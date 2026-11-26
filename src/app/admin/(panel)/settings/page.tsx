@@ -25,6 +25,8 @@ export default function AdminSettingsPage() {
     model: string;
   } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [geminiApiKeyInput, setGeminiApiKeyInput] = useState("");
+  const [anthropicApiKeyInput, setAnthropicApiKeyInput] = useState("");
 
   // Change Password
   const [currentPassword, setCurrentPassword] = useState("");
@@ -44,15 +46,23 @@ export default function AdminSettingsPage() {
     e.preventDefault();
     setSaving(true);
     try {
+      const payload: Record<string, string> = { ...settings };
+      if (geminiApiKeyInput.trim()) payload.geminiApiKey = geminiApiKeyInput.trim();
+      if (anthropicApiKeyInput.trim()) payload.anthropicApiKey = anthropicApiKeyInput.trim();
+
       const res = await fetch("/api/admin/settings", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
+        body: JSON.stringify(payload),
       });
+      const data = await res.json();
       if (res.ok) {
         toast.success("Settings saved");
+        if (data.aiStatus) setAiStatus(data.aiStatus);
+        setGeminiApiKeyInput("");
+        setAnthropicApiKeyInput("");
       } else {
-        toast.error("Failed to save settings");
+        toast.error(data.error || "Failed to save settings");
       }
     } finally {
       setSaving(false);
@@ -155,6 +165,30 @@ export default function AdminSettingsPage() {
               min={1}
               value={settings.aiDailyLimit}
               onChange={(e) => setSettings({ ...settings, aiDailyLimit: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">
+              Google Gemini API Key (Free Tier — Saved Server-Side)
+            </label>
+            <input
+              type="password"
+              value={geminiApiKeyInput}
+              onChange={(e) => setGeminiApiKeyInput(e.target.value)}
+              placeholder="Paste AQ... or AIza... key and click Save Settings"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">
+              Anthropic API Key (Optional — Saved Server-Side)
+            </label>
+            <input
+              type="password"
+              value={anthropicApiKeyInput}
+              onChange={(e) => setAnthropicApiKeyInput(e.target.value)}
+              placeholder="Paste sk-ant-... key and click Save Settings"
               className="w-full px-3 py-2 border border-slate-300 rounded-lg"
             />
           </div>
