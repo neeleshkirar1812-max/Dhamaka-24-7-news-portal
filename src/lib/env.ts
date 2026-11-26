@@ -34,4 +34,7 @@ export const env = {
   geminiModel: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
   aiDailyLimit: Math.max(1, Number.parseInt(process.env.AI_DAILY_LIMIT ?? "200", 10) || 200),
   storageProvider: (process.env.STORAGE_PROVIDER ?? "local") as "local" | "cloudinary" | "s3",
+  cloudinaryCloudName: process.env.CLOUDINARY_CLOUD_NAME ?? "",
+  cloudinaryApiKey: process.env.CLOUDINARY_API_KEY ?? "",
+  cloudinaryApiSecret: process.env.CLOUDINARY_API_SECRET ?? "",
 };

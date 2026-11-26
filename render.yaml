@@ -44,3 +44,9 @@ services:
         sync: false
       - key: STORAGE_PROVIDER
         value: local
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false

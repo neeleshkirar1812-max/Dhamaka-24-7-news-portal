@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { KeyRound, Save, Sparkles } from "lucide-react";
+import { CloudUpload, KeyRound, Save, Sparkles } from "lucide-react";
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState<Record<string, string>>({
@@ -16,6 +16,8 @@ export default function AdminSettingsPage() {
     adsenseClientId: "",
     aiEnabled: "true",
     aiDailyLimit: "200",
+    cloudinaryCloudName: "",
+    cloudinaryApiKey: "",
   });
   const [aiStatus, setAiStatus] = useState<{
     configured: boolean;
@@ -24,9 +26,15 @@ export default function AdminSettingsPage() {
     provider: string;
     model: string;
   } | null>(null);
+  const [storageStatus, setStorageStatus] = useState<{
+    provider: string;
+    cloudinaryConfigured: boolean;
+    cloudName: string | null;
+  } | null>(null);
   const [saving, setSaving] = useState(false);
   const [geminiApiKeyInput, setGeminiApiKeyInput] = useState("");
   const [anthropicApiKeyInput, setAnthropicApiKeyInput] = useState("");
+  const [cloudinaryApiSecretInput, setCloudinaryApiSecretInput] = useState("");
 
   // Change Password
   const [currentPassword, setCurrentPassword] = useState("");
@@ -39,6 +47,7 @@ export default function AdminSettingsPage() {
       .then((d) => {
         if (d?.settings) setSettings((prev) => ({ ...prev, ...d.settings }));
         if (d?.aiStatus) setAiStatus(d.aiStatus);
+        if (d?.storageStatus) setStorageStatus(d.storageStatus);
       });
   }, []);
 
@@ -49,6 +58,7 @@ export default function AdminSettingsPage() {
       const payload: Record<string, string> = { ...settings };
       if (geminiApiKeyInput.trim()) payload.geminiApiKey = geminiApiKeyInput.trim();
       if (anthropicApiKeyInput.trim()) payload.anthropicApiKey = anthropicApiKeyInput.trim();
+      if (cloudinaryApiSecretInput.trim()) payload.cloudinaryApiSecret = cloudinaryApiSecretInput.trim();
 
       const res = await fetch("/api/admin/settings", {
         method: "POST",
@@ -59,8 +69,10 @@ export default function AdminSettingsPage() {
       if (res.ok) {
         toast.success("Settings saved");
         if (data.aiStatus) setAiStatus(data.aiStatus);
+        if (data.storageStatus) setStorageStatus(data.storageStatus);
         setGeminiApiKeyInput("");
         setAnthropicApiKeyInput("");
+        setCloudinaryApiSecretInput("");
       } else {
         toast.error(data.error || "Failed to save settings");
       }
@@ -189,6 +201,53 @@ export default function AdminSettingsPage() {
               value={anthropicApiKeyInput}
               onChange={(e) => setAnthropicApiKeyInput(e.target.value)}
               placeholder="Paste sk-ant-... key and click Save Settings"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+            />
+          </div>
+        </div>
+
+        <h2 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-2 pt-2 flex items-center gap-2">
+          <CloudUpload className="w-4 h-4 text-sky-700" />
+          Media Storage (Cloudinary)
+        </h2>
+        {storageStatus && (
+          <div className="text-xs bg-slate-50 border border-slate-200 rounded-lg p-3 text-slate-700">
+            Active Storage:{" "}
+            <strong>
+              {storageStatus.cloudinaryConfigured
+                ? `Cloudinary (${storageStatus.cloudName})`
+                : `Local (/public/uploads — ephemeral on Render free tier)`}
+            </strong>
+          </div>
+        )}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Cloudinary Cloud Name</label>
+            <input
+              value={settings.cloudinaryCloudName}
+              onChange={(e) => setSettings({ ...settings, cloudinaryCloudName: e.target.value })}
+              placeholder="e.g. ayqvc1w3"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">Cloudinary API Key</label>
+            <input
+              value={settings.cloudinaryApiKey}
+              onChange={(e) => setSettings({ ...settings, cloudinaryApiKey: e.target.value })}
+              placeholder="e.g. 257855549544588"
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 mb-1">
+              Cloudinary API Secret (Saved Server-Side)
+            </label>
+            <input
+              type="password"
+              value={cloudinaryApiSecretInput}
+              onChange={(e) => setCloudinaryApiSecretInput(e.target.value)}
+              placeholder="Paste API Secret and click Save Settings"
               className="w-full px-3 py-2 border border-slate-300 rounded-lg"
             />
           </div>

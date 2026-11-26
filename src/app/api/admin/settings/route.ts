@@ -4,6 +4,7 @@ import { z } from "zod";
 import { getAdminSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getAiStatus } from "@/lib/ai";
+import { getStorageStatus } from "@/lib/storage";
 
 const ALLOWED_KEYS = [
   "siteName",
@@ -16,23 +17,26 @@ const ALLOWED_KEYS = [
   "adsenseClientId",
   "aiEnabled",
   "aiDailyLimit",
+  "cloudinaryCloudName",
+  "cloudinaryApiKey",
 ] as const;
 
-const SECRET_WRITE_KEYS = ["geminiApiKey", "anthropicApiKey"] as const;
+const SECRET_WRITE_KEYS = ["geminiApiKey", "anthropicApiKey", "cloudinaryApiSecret"] as const;
 
 export async function GET() {
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const [rows, aiStatus] = await Promise.all([
+  const [rows, aiStatus, storageStatus] = await Promise.all([
     prisma.setting.findMany({
       where: { key: { in: [...ALLOWED_KEYS] } },
     }),
     getAiStatus(),
+    getStorageStatus(),
   ]);
 
   const settings = Object.fromEntries(rows.map((r) => [r.key, r.value]));
-  return NextResponse.json({ settings, aiStatus });
+  return NextResponse.json({ settings, aiStatus, storageStatus });
 }
 
 export async function POST(req: Request) {
@@ -64,8 +68,8 @@ export async function POST(req: Request) {
     }
 
     revalidatePath("/");
-    const aiStatus = await getAiStatus();
-    return NextResponse.json({ ok: true, aiStatus });
+    const [aiStatus, storageStatus] = await Promise.all([getAiStatus(), getStorageStatus()]);
+    return NextResponse.json({ ok: true, aiStatus, storageStatus });
   } catch {
     return NextResponse.json({ error: "Invalid settings payload" }, { status: 400 });
   }
