@@ -1,0 +1,195 @@
+// Prisma schema for Hindi/English News Portal
+// Local dev uses SQLite; for PostgreSQL in production, change provider to "postgresql"
+// and update DATABASE_URL accordingly.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model Category {
+  id       String     @id @default(cuid())
+  name     String
+  slug     String     @unique
+  parentId String?
+  order    Int        @default(0)
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children Category[] @relation("CategoryHierarchy")
+  articles Article[]
+
+  @@index([parentId])
+  @@index([order])
+}
+
+model Article {
+  id              String        @id @default(cuid())
+  title           String
+  slug            String        @unique
+  subtitle        String?
+  excerpt         String?
+  content         String
+  featuredImage   String?
+  imageCaption    String?
+  imageAlt        String?
+  status          String        @default("DRAFT") // DRAFT | PUBLISHED | UNPUBLISHED
+  isBreaking      Boolean       @default(false)
+  isFeatured      Boolean       @default(false)
+  hideAds         Boolean       @default(false)
+  views           Int           @default(0)
+  authorName      String        @default("संवाददाता")
+  categoryId      String
+  category        Category      @relation(fields: [categoryId], references: [id])
+  metaTitle       String?
+  metaDescription String?
+  canonicalUrl    String?
+  aiSummary       String?
+  aiAssisted      Boolean       @default(false)
+  publishedAt     DateTime?
+  scheduledAt     DateTime?
+  deletedAt       DateTime?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  tags            ArticleTag[]
+  dailyViews      ArticleView[]
+
+  @@index([slug])
+  @@index([status])
+  @@index([publishedAt])
+  @@index([categoryId])
+  @@index([deletedAt])
+  @@index([isBreaking])
+  @@index([isFeatured])
+}
+
+model Tag {
+  id       String       @id @default(cuid())
+  name     String
+  slug     String       @unique
+  articles ArticleTag[]
+}
+
+model ArticleTag {
+  articleId String
+  tagId     String
+  article   Article @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  tag       Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([articleId, tagId])
+  @@index([tagId])
+}
+
+model AdPlacement {
+  id       String   @id @default(cuid())
+  key      String   @unique // header-leaderboard, sidebar-top, sidebar-sticky, in-article-2, in-article-5, list-between, footer-mobile
+  name     String
+  type     String   @default("CUSTOM") // ADSENSE | CUSTOM
+  adCode   String?
+  isActive Boolean  @default(true)
+  ads      Ad[]
+  stats    AdStat[]
+}
+
+model Ad {
+  id          String      @id @default(cuid())
+  placementId String
+  placement   AdPlacement @relation(fields: [placementId], references: [id], onDelete: Cascade)
+  title       String
+  imageUrl    String
+  targetUrl   String
+  cpm         Float       @default(0)
+  cpc         Float       @default(0)
+  startDate   DateTime?
+  endDate     DateTime?
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  stats       AdStat[]
+
+  @@index([placementId])
+  @@index([isActive])
+}
+
+model AdStat {
+  id          String      @id @default(cuid())
+  adId        String?
+  ad          Ad?         @relation(fields: [adId], references: [id], onDelete: Cascade)
+  placementId String
+  placement   AdPlacement @relation(fields: [placementId], references: [id], onDelete: Cascade)
+  date        DateTime
+  impressions Int         @default(0)
+  clicks      Int         @default(0)
+
+  @@unique([adId, placementId, date])
+  @@index([date])
+  @@index([placementId])
+}
+
+model RevenueEntry {
+  id        String   @id @default(cuid())
+  date      DateTime
+  source    String   @default("ADSENSE")
+  amount    Float
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([date])
+}
+
+model ArticleView {
+  id        String   @id @default(cuid())
+  articleId String
+  article   Article  @relation(fields: [articleId], references: [id], onDelete: Cascade)
+  date      DateTime
+  count     Int      @default(0)
+
+  @@unique([articleId, date])
+  @@index([date])
+}
+
+model AiLog {
+  id           String   @id @default(cuid())
+  feature      String
+  model        String
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([feature])
+}
+
+model Setting {
+  key   String @id
+  value String
+}
+
+model TickerItem {
+  id        String   @id @default(cuid())
+  text      String
+  url       String?
+  isActive  Boolean  @default(true)
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+}
+
+model Media {
+  id        String   @id @default(cuid())
+  filename  String
+  url       String
+  alt       String?
+  mimeType  String
+  size      Int
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
