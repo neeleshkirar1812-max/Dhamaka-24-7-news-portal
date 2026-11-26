@@ -31,7 +31,7 @@ export const env = {
   geminiApiKey: process.env.GEMINI_API_KEY ?? "",
   aiProvider: (process.env.AI_PROVIDER ?? "auto") as "auto" | "gemini" | "anthropic",
   aiModel: process.env.AI_MODEL || "claude-sonnet-5-5",
-  geminiModel: process.env.GEMINI_MODEL || "gemini-4-hydrogen",
+  geminiModel: process.env.GEMINI_MODEL || "gemini-3.5-flash-lite",
   aiDailyLimit: Math.max(1, Number.parseInt(process.env.AI_DAILY_LIMIT ?? "200", 10) || 200),
   storageProvider: (process.env.STORAGE_PROVIDER ?? "local") as "local" | "cloudinary" | "s3",
 };

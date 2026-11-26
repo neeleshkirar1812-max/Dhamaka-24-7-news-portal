@@ -31,7 +31,7 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL
-        value: gemini-4-hydrogen
+        value: gemini-3.5-flash-lite
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: AI_MODEL

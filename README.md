@@ -38,7 +38,7 @@ A production-ready Hindi/English news website with a regional news layout, built
    *(If `ADMIN_PASSWORD_HASH` is left empty in dev, `npm run seed` defaults to `Admin@123456`.)*
 
 4. **Set up AI Editorial Features (Free Google Gemini OR Paid Anthropic Claude):**
-   - **Free Option (Recommended):** Get a free-tier API key from [Google AI Studio](https://aistudio.google.com/apikey) (no credit card needed) and set `GEMINI_API_KEY="AIza..."` in `.env` (`GEMINI_MODEL` defaults to `gemini-4-hydrogen`).
+   - **Free Option (Recommended):** Get a free-tier API key from [Google AI Studio](https://aistudio.google.com/apikey) (no credit card needed) and set `GEMINI_API_KEY="AIza..."` in `.env` (`GEMINI_MODEL` defaults to `gemini-3.5-flash-lite`).
    - **Anthropic Option:** Get an API key from [https://console.anthropic.com/](https://console.anthropic.com/) and set `ANTHROPIC_API_KEY="sk-ant-..."` (`AI_MODEL` defaults to `claude-sonnet-5-5`).
    - Optionally customize `AI_DAILY_LIMIT` (defaults to `200`).
    - If neither key is set, AI buttons are gracefully disabled and the rest of the site runs normally.

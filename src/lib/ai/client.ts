@@ -198,40 +198,58 @@ async function callGeminiText({
     }
   }
 
-  try {
-    const interaction = await gemini.interactions.create({
-      model,
-      system_instruction: system,
-      input,
-      generation_config: {
-        max_output_tokens: maxTokens,
-      },
-      response_mime_type: "application/json",
-      store: false,
-    });
+  const candidates =
+    model === "gemini-3.5-flash-lite"
+      ? ["gemini-3.5-flash-lite", "gemini-4-hydrogen"]
+      : [model, "gemini-3.5-flash-lite"];
 
-    await prisma.aiLog.create({
-      data: {
-        feature,
-        model,
-        inputTokens: interaction.usage?.total_input_tokens ?? 0,
-        outputTokens: interaction.usage?.total_output_tokens ?? 0,
-      },
-    });
+  let lastErr: unknown;
+  for (const candidateModel of candidates) {
+    try {
+      const interaction = await gemini.interactions.create({
+        model: candidateModel,
+        system_instruction: system,
+        input,
+        generation_config: {
+          max_output_tokens: maxTokens,
+        },
+        store: false,
+      });
 
-    const text = interaction.output_text;
-    if (!text) {
-      throw new AiServiceError("AI returned an empty response.", "PARSE_ERROR", 502);
+      await prisma.aiLog.create({
+        data: {
+          feature,
+          model: candidateModel,
+          inputTokens: interaction.usage?.total_input_tokens ?? 0,
+          outputTokens: interaction.usage?.total_output_tokens ?? 0,
+        },
+      });
+
+      const text = interaction.output_text;
+      if (!text) {
+        throw new AiServiceError("AI returned an empty response.", "PARSE_ERROR", 502);
+      }
+      return text;
+    } catch (err) {
+      if (err instanceof AiServiceError) throw err;
+      lastErr = err;
+      const status = (err as { status?: number })?.status;
+      // Retry fallback model only on temporary 503 high-demand errors
+      if (status === 503) {
+        continue;
+      }
+      if (status === 429) {
+        throw new AiServiceError("AI rate limit reached. Please try again shortly.", "API_ERROR", 429);
+      }
+      throw new AiServiceError("AI service is temporarily unavailable. Please try again.", "API_ERROR", 502);
     }
-    return text;
-  } catch (err) {
-    if (err instanceof AiServiceError) throw err;
-    const status = (err as { status?: number })?.status;
-    if (status === 429) {
-      throw new AiServiceError("AI rate limit reached. Please try again shortly.", "API_ERROR", 429);
-    }
-    throw new AiServiceError("AI service is temporarily unavailable. Please try again.", "API_ERROR", 502);
   }
+
+  const finalStatus = (lastErr as { status?: number })?.status;
+  if (finalStatus === 429) {
+    throw new AiServiceError("AI rate limit reached. Please try again shortly.", "API_ERROR", 429);
+  }
+  throw new AiServiceError("AI service is temporarily unavailable. Please try again.", "API_ERROR", 502);
 }
 
 async function callAnthropicText({
