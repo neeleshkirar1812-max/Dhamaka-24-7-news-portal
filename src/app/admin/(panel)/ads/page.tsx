@@ -16,6 +16,7 @@ import {
   Plus,
   Sparkles,
   Trash2,
+  Upload,
 } from "lucide-react";
 
 interface KpiWindow {
@@ -59,6 +60,9 @@ export default function AdminAdsPage() {
   const [adTargetUrl, setAdTargetUrl] = useState("");
   const [adCpm, setAdCpm] = useState("50");
   const [adCpc, setAdCpc] = useState("4");
+  const [adStartDate, setAdStartDate] = useState("");
+  const [adEndDate, setAdEndDate] = useState("");
+  const [uploadingBanner, setUploadingBanner] = useState(false);
 
   // Manual AdSense Entry
   const [revDate, setRevDate] = useState(new Date().toISOString().slice(0, 10));
@@ -95,6 +99,29 @@ export default function AdminAdsPage() {
     } else {
       const err = await res.json().catch(() => ({}));
       toast.error(err.error || "Action failed");
+    }
+  }
+
+  async function handleBannerUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingBanner(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      if (adTitle.trim()) fd.append("alt", adTitle.trim());
+      const res = await fetch("/api/admin/upload", { method: "POST", body: fd });
+      const json = await res.json();
+      if (!res.ok) {
+        toast.error(json.error || "Banner upload failed");
+      } else {
+        setAdImageUrl(json.url);
+        toast.success("Banner image uploaded");
+      }
+    } catch {
+      toast.error("Banner upload failed");
+    } finally {
+      setUploadingBanner(false);
     }
   }
 
@@ -250,6 +277,8 @@ export default function AdminAdsPage() {
                 targetUrl: adTargetUrl,
                 cpm: Number(adCpm) || 0,
                 cpc: Number(adCpc) || 0,
+                startDate: adStartDate || null,
+                endDate: adEndDate || null,
                 isActive: true,
               },
               "Direct ad created"
@@ -257,6 +286,8 @@ export default function AdminAdsPage() {
             setAdTitle("");
             setAdImageUrl("");
             setAdTargetUrl("");
+            setAdStartDate("");
+            setAdEndDate("");
           }}
           className="bg-white rounded-xl border border-slate-200 p-5 space-y-3"
         >
@@ -281,20 +312,37 @@ export default function AdminAdsPage() {
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
             </select>
-            <input
-              required
-              placeholder="Banner Image URL"
-              value={adImageUrl}
-              onChange={(e) => setAdImageUrl(e.target.value)}
-              className="px-3 py-2 border border-slate-300 rounded-lg"
-            />
+            <div className="sm:col-span-2 flex flex-col sm:flex-row gap-2">
+              <label className="inline-flex items-center justify-center gap-1.5 px-3 py-2 border border-dashed border-slate-300 rounded-lg font-medium text-slate-700 hover:bg-slate-50 cursor-pointer whitespace-nowrap">
+                <Upload className="w-3.5 h-3.5" />
+                {uploadingBanner ? "Uploading..." : "Upload Banner Image"}
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  onChange={handleBannerUpload}
+                />
+              </label>
+              <input
+                required
+                placeholder="Or paste Banner Image URL (https://...)"
+                value={adImageUrl}
+                onChange={(e) => setAdImageUrl(e.target.value)}
+                className="flex-1 px-3 py-2 border border-slate-300 rounded-lg"
+              />
+            </div>
+            {adImageUrl && (
+              <div className="sm:col-span-2 bg-slate-50 border border-slate-200 rounded-lg p-2 flex items-center justify-center">
+                <img src={adImageUrl} alt="Banner preview" className="max-h-24 w-auto rounded object-contain" />
+              </div>
+            )}
             <input
               required
               type="url"
               placeholder="Click Target URL (https://...)"
               value={adTargetUrl}
               onChange={(e) => setAdTargetUrl(e.target.value)}
-              className="px-3 py-2 border border-slate-300 rounded-lg"
+              className="sm:col-span-2 px-3 py-2 border border-slate-300 rounded-lg"
             />
             <input
               type="number"
@@ -312,6 +360,24 @@ export default function AdminAdsPage() {
               onChange={(e) => setAdCpc(e.target.value)}
               className="px-3 py-2 border border-slate-300 rounded-lg"
             />
+            <div>
+              <label className="block text-[11px] text-slate-500 mb-1">Start Date (Optional)</label>
+              <input
+                type="date"
+                value={adStartDate}
+                onChange={(e) => setAdStartDate(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] text-slate-500 mb-1">End Date (Optional)</label>
+              <input
+                type="date"
+                value={adEndDate}
+                onChange={(e) => setAdEndDate(e.target.value)}
+                className="w-full px-3 py-2 border border-slate-300 rounded-lg"
+              />
+            </div>
           </div>
           <button type="submit" className="px-4 py-2 rounded-lg bg-red-700 hover:bg-red-800 text-white text-xs font-semibold cursor-pointer">
             Create Direct Ad
