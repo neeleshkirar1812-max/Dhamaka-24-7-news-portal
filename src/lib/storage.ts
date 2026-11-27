@@ -163,7 +163,7 @@ export async function uploadImageFile(file: File, alt?: string): Promise<UploadR
     const uploadDir = path.join(process.cwd(), "public", "uploads");
     await fs.mkdir(uploadDir, { recursive: true });
     await fs.writeFile(path.join(uploadDir, randomName), buffer);
-    publicUrl = `/uploads/${randomName}`;
+    publicUrl = `/api/uploads/${randomName}`;
   } else {
     throw new Error(`Storage provider "${env.storageProvider}" is not configured yet.`);
   }
@@ -191,8 +191,9 @@ export async function deleteStoredFile(mediaId: string): Promise<void> {
   const media = await prisma.media.findUnique({ where: { id: mediaId } });
   if (!media) return;
 
-  if (media.url.startsWith("/uploads/")) {
-    const filePath = path.join(process.cwd(), "public", media.url);
+  if (media.url.startsWith("/uploads/") || media.url.startsWith("/api/uploads/")) {
+    const fileName = path.basename(media.url);
+    const filePath = path.join(process.cwd(), "public", "uploads", fileName);
     await fs.unlink(filePath).catch(() => {});
   } else if (media.url.includes("res.cloudinary.com") && media.filename) {
     const creds = await getCloudinaryCreds();

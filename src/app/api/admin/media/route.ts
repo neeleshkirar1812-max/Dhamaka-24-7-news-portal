@@ -3,6 +3,8 @@ import { getAdminSession } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { deleteStoredFile } from "@/lib/storage";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -11,7 +13,10 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
     take: 100,
   });
-  return NextResponse.json({ media });
+  return NextResponse.json(
+    { media },
+    { headers: { "Cache-Control": "no-store" } }
+  );
 }
 
 export async function DELETE(req: Request) {

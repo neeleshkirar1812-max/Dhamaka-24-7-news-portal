@@ -165,9 +165,10 @@ function detectMimeType(urlOrPath: string): "image/jpeg" | "image/png" | "image/
 }
 
 async function loadLocalImageBase64(urlPath: string): Promise<{ data: string; mimeType: "image/jpeg" | "image/png" | "image/webp" } | null> {
-  if (!urlPath.startsWith("/uploads/")) return null;
+  if (!urlPath.startsWith("/uploads/") && !urlPath.startsWith("/api/uploads/")) return null;
   try {
-    const filePath = path.join(process.cwd(), "public", urlPath);
+    const fileName = path.basename(urlPath);
+    const filePath = path.join(process.cwd(), "public", "uploads", fileName);
     const buf = await fs.readFile(filePath);
     return { data: buf.toString("base64"), mimeType: detectMimeType(urlPath) };
   } catch {
