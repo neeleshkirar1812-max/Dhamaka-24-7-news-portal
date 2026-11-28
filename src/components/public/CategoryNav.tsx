@@ -45,7 +45,7 @@ export function CategoryNav({
       {/* MP City Sub-Nav */}
       {cities.length > 0 && (
         <div className="bg-slate-100 border-t border-slate-200">
-          <div className="max-w-7xl mx-auto px-3 sm:px-4 flex items-center gap-2 overflow-x-auto py-1.5 text-xs">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 flex items-center gap-2 overflow-x-auto no-scrollbar py-1.5 text-xs">
             <span className="font-bold text-red-700 whitespace-nowrap">MP शहर:</span>
             {cities.map((city) => (
               <Link

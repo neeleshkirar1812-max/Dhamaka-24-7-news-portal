@@ -28,13 +28,20 @@ export async function AdSlot({
   }
 
   const now = new Date();
-  const activeAd = slot.ads.find((a) => {
-    if (a.startDate && a.startDate > now) return false;
-    if (a.endDate && a.endDate < now) return false;
-    return true;
-  });
+  const activeAds = slot.ads
+    .filter((a) => {
+      if (a.startDate && a.startDate > now) return false;
+      if (a.endDate && a.endDate < now) return false;
+      return true;
+    })
+    .map((a) => ({
+      id: a.id,
+      title: a.title,
+      imageUrl: a.imageUrl,
+      targetUrl: a.targetUrl,
+    }));
 
-  if (slot.type === "CUSTOM" && !activeAd) return null;
+  if (slot.type === "CUSTOM" && activeAds.length === 0) return null;
   if (slot.type === "ADSENSE" && !slot.adCode) return null;
 
   return (
@@ -43,16 +50,7 @@ export async function AdSlot({
       placementKey={slot.key}
       type={slot.type as "ADSENSE" | "CUSTOM"}
       adCode={slot.adCode}
-      ad={
-        activeAd
-          ? {
-              id: activeAd.id,
-              title: activeAd.title,
-              imageUrl: activeAd.imageUrl,
-              targetUrl: activeAd.targetUrl,
-            }
-          : null
-      }
+      ads={activeAds}
     />
   );
 }

@@ -40,6 +40,15 @@ body {
   animation-play-state: paused;
 }
 
+.no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Editorial article prose styling */
 .article-prose p {
   margin-bottom: 1.15rem;
