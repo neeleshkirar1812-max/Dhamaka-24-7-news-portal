@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
 import {
   BarChart3,
+  Bot,
   ExternalLink,
   FileText,
   FolderTree,
@@ -22,6 +23,7 @@ import { cn } from "@/lib/utils";
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/articles", label: "Articles", icon: FileText },
+  { href: "/admin/auto-news", label: "AI News Desk", icon: Bot },
   { href: "/admin/articles/trash", label: "Trash", icon: Trash2 },
   { href: "/admin/categories", label: "Categories", icon: FolderTree },
   { href: "/admin/tags", label: "Tags", icon: Tags },
@@ -111,6 +113,26 @@ export function AdminShell({
             </button>
           </div>
         </header>
+        <nav className="md:hidden bg-slate-900 text-slate-200 px-3 py-2 flex items-center gap-1.5 overflow-x-auto">
+          {navItems.map((item) => {
+            const active =
+              item.href === "/admin"
+                ? pathname === "/admin"
+                : pathname.startsWith(item.href);
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "px-2.5 py-1 rounded text-xs font-medium whitespace-nowrap transition",
+                  active ? "bg-red-700 text-white" : "bg-slate-800 text-slate-300"
+                )}
+              >
+                {item.label}
+              </Link>
+            );
+          })}
+        </nav>
         <main className="flex-1 p-4 md:p-6 overflow-x-hidden">{children}</main>
       </div>
     </div>

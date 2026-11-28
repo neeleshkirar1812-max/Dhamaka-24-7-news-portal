@@ -19,9 +19,20 @@ const ALLOWED_KEYS = [
   "aiDailyLimit",
   "cloudinaryCloudName",
   "cloudinaryApiKey",
+  "autoNewsEnabled",
+  "autoNewsAutoPublish",
+  "autoNewsMinScore",
+  "autoNewsMaxPerRun",
+  "autoNewsGenerateImage",
+  "autoNewsIntervalMinutes",
 ] as const;
 
-const SECRET_WRITE_KEYS = ["geminiApiKey", "anthropicApiKey", "cloudinaryApiSecret"] as const;
+const SECRET_WRITE_KEYS = [
+  "geminiApiKey",
+  "anthropicApiKey",
+  "cloudinaryApiSecret",
+  "autoNewsCronSecret",
+] as const;
 
 export async function GET() {
   const session = await getAdminSession();

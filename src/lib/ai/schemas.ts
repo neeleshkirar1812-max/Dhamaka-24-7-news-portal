@@ -119,3 +119,27 @@ export const AiRevenueInsightsOutputSchema = z.object({
   highlights: z.array(z.string()).min(1).max(5),
   recommendations: z.array(z.string()).min(1).max(5),
 });
+
+export const AutoNewsSourceCitationSchema = z.object({
+  publisher: z.string().min(1).max(120),
+  title: z.string().min(1).max(260),
+  url: z.string().url().max(700),
+});
+
+export const AutoNewsFactCheckOutputSchema = z.object({
+  verification: z.enum(["VERIFIED", "NEEDS_REVIEW", "DISPUTED"]),
+  confidence: z.number().min(0).max(100),
+  factCheckNotes: z.string().min(8).max(600),
+  verifiedSources: z.array(AutoNewsSourceCitationSchema).max(6).optional().default([]),
+  title: z.string().min(5).max(260),
+  subtitle: z.string().max(350).nullable().optional(),
+  excerpt: z.string().min(10).max(450),
+  contentHtml: z.string().min(80),
+  aiSummaryBullets: z.array(z.string().min(5).max(240)).min(3).max(4),
+  tags: z.array(z.string().min(1).max(40)).min(2).max(8),
+  metaTitle: z.string().min(5).max(80),
+  metaDescription: z.string().min(10).max(180),
+  slug: z.string().min(3).max(120),
+  isBreaking: z.boolean().optional().default(false),
+  imagePrompt: z.string().max(400).optional().default(""),
+});

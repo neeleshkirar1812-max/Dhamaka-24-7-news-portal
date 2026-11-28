@@ -19,14 +19,15 @@ model User {
 }
 
 model Category {
-  id       String     @id @default(cuid())
-  name     String
-  slug     String     @unique
-  parentId String?
-  order    Int        @default(0)
-  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
-  children Category[] @relation("CategoryHierarchy")
-  articles Article[]
+  id             String          @id @default(cuid())
+  name           String
+  slug           String          @unique
+  parentId       String?
+  order          Int             @default(0)
+  parent         Category?       @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children       Category[]      @relation("CategoryHierarchy")
+  articles       Article[]
+  autoNewsTopics AutoNewsTopic[]
 
   @@index([parentId])
   @@index([order])
@@ -55,6 +56,10 @@ model Article {
   canonicalUrl    String?
   aiSummary       String?
   aiAssisted      Boolean       @default(false)
+  factCheckStatus String?       // VERIFIED | NEEDS_REVIEW | DISPUTED
+  factCheckScore  Int?
+  factCheckNotes  String?
+  sourceUrls      String?       // JSON array of { publisher, title, url }
   publishedAt     DateTime?
   scheduledAt     DateTime?
   deletedAt       DateTime?
@@ -192,4 +197,42 @@ model Media {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+model AutoNewsTopic {
+  id         String        @id @default(cuid())
+  name       String
+  query      String
+  scope      String        @default("CITY") // GLOBAL | NATIONAL | STATE | CITY
+  categoryId String
+  category   Category      @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  rssUrl     String?
+  isActive   Boolean       @default(true)
+  priority   Int           @default(0)
+  lastRunAt  DateTime?
+  createdAt  DateTime      @default(now())
+  logs       AutoNewsLog[]
+
+  @@unique([name, scope])
+  @@index([isActive])
+  @@index([scope])
+}
+
+model AutoNewsLog {
+  id           String         @id @default(cuid())
+  topicId      String?
+  topic        AutoNewsTopic? @relation(fields: [topicId], references: [id], onDelete: SetNull)
+  articleId    String?
+  headline     String
+  scope        String
+  cityOrRegion String
+  verification String         // VERIFIED | NEEDS_REVIEW | DISPUTED | DUPLICATE | ERROR
+  confidence   Int            @default(0)
+  outcome      String         // PUBLISHED | DRAFT | REJECTED | SKIPPED | ERROR
+  reason       String?
+  sourcesJson  String?
+  createdAt    DateTime       @default(now())
+
+  @@index([createdAt])
+  @@index([verification])
 }

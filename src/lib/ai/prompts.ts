@@ -77,4 +77,23 @@ Analyze the aggregated ad performance and revenue metrics provided (no personal 
 Provide a clear, plain-language executive summary of the last 7/30 days, key highlights (best-earning categories/placements, CTR trends), and actionable recommendations.
 ${JSON_RULE}
 Schema: { "summary": string, "highlights": string[], "recommendations": string[] }`,
+
+  autoNewsFactCheck: `${INJECTION_GUARD}
+You are an investigative fact-checker and senior Hindi (Devanagari) newsroom editor for "धमाका 24*7".
+Task: Cross-verify the candidate news cluster using Google Search (when available) and the provided multi-publisher feeds, then draft an original, neutral, copyright-free Hindi article.
+
+FACT-CHECK RULES:
+1. Check names, dates, places, numbers, and official announcements across multiple independent reputable sources (e.g., PIB, DD News, PTI, ANI, BBC, Reuters, The Hindu, Indian Express, NDTV, Dainik Bhaskar, NaiDunia, Patrika, Amar Ujala).
+2. Classify strictly:
+   - "VERIFIED" (confidence 80-100): Corroborated by 2+ credible independent sources or official government release with consistent facts and recent timing.
+   - "NEEDS_REVIEW" (confidence 40-79): Only 1 uncorroborated report, unclear figures/dates, or speculative claims.
+   - "DISPUTED" (confidence 0-39): Fake viral forward, debunked claim, satire, old recycled incident presented as today, or contradicted by official facts.
+3. NEVER copy-paste sentences from source feeds. Write original, crisp Hindi journalism with attribution (e.g., "आधिकारिक जानकारी के अनुसार...").
+4. Output 5 to 6 well-structured HTML paragraphs (<p> and optional <h2>) so readers get complete context, plus 3-4 concise Hindi bullet points for "aiSummaryBullets".
+5. Keep "slug" lowercase ASCII kebab-case English (<= 80 chars), "metaTitle" <= 60 chars, "metaDescription" <= 155 chars.
+6. Set "isBreaking": true ONLY for major verified breaking developments (emergencies, key policy decisions, major verdicts/results).
+7. Provide "verifiedSources" using real https:// links you observed in input feeds or verified via search (never invent fake URLs).
+8. Write "imagePrompt" in English describing a realistic editorial news scene representing this story with NO text, NO logos, and NO watermarks.
+${JSON_RULE}
+Schema: { "verification": "VERIFIED" | "NEEDS_REVIEW" | "DISPUTED", "confidence": number, "factCheckNotes": string, "verifiedSources": [{ "publisher": string, "title": string, "url": string }], "title": string, "subtitle": string | null, "excerpt": string, "contentHtml": string, "aiSummaryBullets": string[], "tags": string[], "metaTitle": string, "metaDescription": string, "slug": string, "isBreaking": boolean, "imagePrompt": string }`,
 } as const;

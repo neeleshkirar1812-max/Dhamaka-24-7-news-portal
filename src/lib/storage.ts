@@ -127,22 +127,24 @@ async function deleteFromCloudinary(publicId: string, creds: CloudinaryCreds): P
 }
 
 /**
- * Storage abstraction layer.
- * Uses Cloudinary automatically when Cloudinary credentials are configured (or
- * STORAGE_PROVIDER="cloudinary"), and falls back to local `/public/uploads` in dev.
+ * Storage abstraction layer for raw Buffers (used by both form uploads and AI images).
+ * Uses Cloudinary automatically when configured, else falls back to local `/public/uploads`.
  */
-export async function uploadImageFile(file: File, alt?: string): Promise<UploadResult> {
-  if (!ALLOWED_MIME_TYPES.has(file.type)) {
+export async function uploadImageBuffer(
+  buffer: Buffer,
+  mimeType: string,
+  alt?: string
+): Promise<UploadResult> {
+  if (!ALLOWED_MIME_TYPES.has(mimeType)) {
     throw new Error("Only JPG, PNG, and WebP images are allowed.");
   }
-  if (file.size > MAX_FILE_SIZE) {
+  if (buffer.byteLength > MAX_FILE_SIZE) {
     throw new Error("File size exceeds 5 MB limit.");
   }
 
-  const ext = EXT_BY_MIME[file.type] ?? ".jpg";
+  const ext = EXT_BY_MIME[mimeType] ?? ".jpg";
   const baseId = `${Date.now()}-${crypto.randomUUID()}`;
   const randomName = `${baseId}${ext}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
 
   const creds = await getCloudinaryCreds();
   const cloudinaryReady = Boolean(creds.cloudName && creds.apiKey && creds.apiSecret);
@@ -156,7 +158,7 @@ export async function uploadImageFile(file: File, alt?: string): Promise<UploadR
         "Cloudinary is selected, but CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, or CLOUDINARY_API_SECRET is missing."
       );
     }
-    const uploaded = await uploadToCloudinary(buffer, file.type, baseId, creds);
+    const uploaded = await uploadToCloudinary(buffer, mimeType, baseId, creds);
     publicUrl = uploaded.url;
     storedFilename = uploaded.publicId;
   } else if (env.storageProvider === "local") {
@@ -173,8 +175,8 @@ export async function uploadImageFile(file: File, alt?: string): Promise<UploadR
       filename: storedFilename,
       url: publicUrl,
       alt: alt || null,
-      mimeType: file.type,
-      size: file.size,
+      mimeType,
+      size: buffer.byteLength,
     },
   });
 
@@ -185,6 +187,21 @@ export async function uploadImageFile(file: File, alt?: string): Promise<UploadR
     mimeType: media.mimeType,
     size: media.size,
   };
+}
+
+/**
+ * Handles uploaded browser File objects via uploadImageBuffer.
+ */
+export async function uploadImageFile(file: File, alt?: string): Promise<UploadResult> {
+  if (!ALLOWED_MIME_TYPES.has(file.type)) {
+    throw new Error("Only JPG, PNG, and WebP images are allowed.");
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error("File size exceeds 5 MB limit.");
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  return uploadImageBuffer(buffer, file.type, alt);
 }
 
 export async function deleteStoredFile(mediaId: string): Promise<void> {

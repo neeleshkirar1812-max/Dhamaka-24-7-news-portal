@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Calendar, User, TrendingUp } from "lucide-react";
+import { Calendar, User, TrendingUp, ShieldCheck, AlertTriangle, ExternalLink } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { env } from "@/lib/env";
 import { PUBLIC_ARTICLE_WHERE, splitHtmlAtParagraphs } from "@/lib/news-queries";
@@ -203,6 +203,80 @@ export default async function ArticleDetailPage({
               )}
               {part3 && <div dangerouslySetInnerHTML={{ __html: part3 }} />}
             </div>
+
+            {/* AI Fact-Check & Source Citations */}
+            {article.factCheckStatus && (
+              <div
+                className={`mt-6 rounded-xl border p-4 text-sm ${
+                  article.factCheckStatus === "VERIFIED"
+                    ? "bg-emerald-50/70 border-emerald-200 text-emerald-950"
+                    : "bg-amber-50/70 border-amber-200 text-amber-950"
+                }`}
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                  <span className="inline-flex items-center gap-1.5 font-bold">
+                    {article.factCheckStatus === "VERIFIED" ? (
+                      <ShieldCheck className="w-4 h-4 text-emerald-700" />
+                    ) : (
+                      <AlertTriangle className="w-4 h-4 text-amber-700" />
+                    )}
+                    {article.factCheckStatus === "VERIFIED"
+                      ? "AI तथ्य-जांच प्रमाणित (Verified News)"
+                      : "संपादकीय समीक्षा (Needs Review)"}
+                  </span>
+                  {typeof article.factCheckScore === "number" && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-white border border-slate-200 text-slate-700">
+                      विश्वसनीयता स्कोर: {article.factCheckScore}%
+                    </span>
+                  )}
+                </div>
+                {article.factCheckNotes && (
+                  <p className="text-xs leading-relaxed text-slate-700 mb-2">
+                    {article.factCheckNotes}
+                  </p>
+                )}
+                {(() => {
+                  try {
+                    const sources = article.sourceUrls
+                      ? (JSON.parse(article.sourceUrls) as Array<{
+                          publisher?: string;
+                          title?: string;
+                          url?: string;
+                        }>)
+                      : [];
+                    const valid = sources.filter(
+                      (s) => s?.url && /^https?:\/\//i.test(s.url)
+                    );
+                    if (valid.length === 0) return null;
+                    return (
+                      <div className="pt-2 border-t border-black/10 space-y-1">
+                        <div className="text-[11px] font-semibold text-slate-600">
+                          सत्यापित समाचार स्रोत (Verified Sources):
+                        </div>
+                        <ul className="space-y-1">
+                          {valid.slice(0, 5).map((src, idx) => (
+                            <li key={`${src.url}-${idx}`} className="text-xs">
+                              <a
+                                href={src.url}
+                                target="_blank"
+                                rel="noopener noreferrer nofollow"
+                                className="inline-flex items-center gap-1 text-red-700 hover:underline font-medium"
+                              >
+                                <span>{src.publisher || "Source"}:</span>
+                                <span className="line-clamp-1">{src.title || src.url}</span>
+                                <ExternalLink className="w-3 h-3 shrink-0" />
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    );
+                  } catch {
+                    return null;
+                  }
+                })()}
+              </div>
+            )}
 
             {/* Tags */}
             {article.tags.length > 0 && (

@@ -184,6 +184,7 @@ async function callGeminiText({
   userInput,
   maxTokens,
   retryFrom,
+  useSearch = false,
 }: {
   apiKey: string;
   feature: string;
@@ -192,6 +193,7 @@ async function callGeminiText({
   userInput: AiUserInput;
   maxTokens: number;
   retryFrom?: string;
+  useSearch?: boolean;
 }): Promise<string> {
   const gemini = getGeminiClient(apiKey);
 
@@ -228,18 +230,27 @@ async function callGeminiText({
     }
   }
 
-  const candidates =
+  const candidates: Array<{ model: string; withSearch: boolean }> =
     model === "gemini-3.5-flash-lite"
-      ? ["gemini-3.5-flash-lite", "gemini-4-hydrogen"]
-      : [model, "gemini-3.5-flash-lite"];
+      ? [
+          { model: "gemini-3.5-flash-lite", withSearch: useSearch },
+          { model: "gemini-4-hydrogen", withSearch: useSearch },
+          ...(useSearch ? [{ model: "gemini-3.5-flash-lite", withSearch: false }] : []),
+        ]
+      : [
+          { model, withSearch: useSearch },
+          { model: "gemini-3.5-flash-lite", withSearch: useSearch },
+          ...(useSearch ? [{ model: "gemini-3.5-flash-lite", withSearch: false }] : []),
+        ];
 
   let lastErr: unknown;
-  for (const candidateModel of candidates) {
+  for (const candidate of candidates) {
     try {
       const interaction = await gemini.interactions.create({
-        model: candidateModel,
+        model: candidate.model,
         system_instruction: system,
         input,
+        ...(candidate.withSearch ? { tools: [{ type: "google_search" as const }] } : {}),
         generation_config: {
           max_output_tokens: maxTokens,
         },
@@ -248,8 +259,8 @@ async function callGeminiText({
 
       await prisma.aiLog.create({
         data: {
-          feature,
-          model: candidateModel,
+          feature: candidate.withSearch ? `${feature}:grounded` : feature,
+          model: candidate.model,
           inputTokens: interaction.usage?.total_input_tokens ?? 0,
           outputTokens: interaction.usage?.total_output_tokens ?? 0,
         },
@@ -264,8 +275,8 @@ async function callGeminiText({
       if (err instanceof AiServiceError) throw err;
       lastErr = err;
       const status = (err as { status?: number })?.status;
-      // Retry fallback model only on temporary 503 high-demand errors
-      if (status === 503) {
+      // Retry fallback model/mode on temporary 503 demand or unsupported 400 tool parameter
+      if (status === 503 || status === 400) {
         continue;
       }
       if (status === 429) {
@@ -364,12 +375,14 @@ export async function callAiStructured<T>({
   userContent,
   schema,
   maxTokens = 1500,
+  useSearch = false,
 }: {
   feature: string;
   system: string;
   userContent: AiUserInput;
   schema: z.ZodType<T>;
   maxTokens?: number;
+  useSearch?: boolean;
 }): Promise<T> {
   const status = await assertAiReady();
 
@@ -383,6 +396,7 @@ export async function callAiStructured<T>({
           userInput: userContent,
           maxTokens,
           retryFrom,
+          useSearch,
         })
       : callAnthropicText({
           apiKey: status.apiKey,
@@ -406,5 +420,53 @@ export async function callAiStructured<T>({
     } catch {
       throw new AiServiceError("AI returned an invalid structured response.", "PARSE_ERROR", 502);
     }
+  }
+}
+
+/**
+ * Generates an editorial news illustration using Gemini Nano Banana 2.1 when enabled.
+ * Returns null gracefully if quota, model availability, or key restricts image generation.
+ */
+export async function generateEditorialImage(
+  prompt: string
+): Promise<{ buffer: Buffer; mimeType: "image/png" | "image/jpeg" | "image/webp" } | null> {
+  const status = await assertAiReady().catch(() => null);
+  if (!status || status.provider !== "gemini" || !prompt.trim()) return null;
+
+  const gemini = getGeminiClient(status.apiKey);
+  try {
+    const interaction = await gemini.interactions.create({
+      model: "gemini-nano-banana-2.1",
+      input: prompt.trim(),
+      response_modalities: ["image"],
+      generation_config: {
+        image_config: {
+          aspect_ratio: "16:9",
+          image_size: "1K",
+        },
+      },
+      store: false,
+    });
+
+    await prisma.aiLog.create({
+      data: {
+        feature: "auto_news_image",
+        model: "gemini-nano-banana-2.1",
+        inputTokens: interaction.usage?.total_input_tokens ?? 0,
+        outputTokens: interaction.usage?.total_output_tokens ?? 0,
+      },
+    });
+
+    const img = interaction.output_image;
+    if (!img?.data) return null;
+    const mimeType: "image/jpeg" | "image/png" | "image/webp" =
+      img.mime_type === "image/jpeg"
+        ? "image/jpeg"
+        : img.mime_type === "image/webp"
+          ? "image/webp"
+          : "image/png";
+    return { buffer: Buffer.from(img.data, "base64"), mimeType };
+  } catch {
+    return null;
   }
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { CloudUpload, KeyRound, Save, Sparkles } from "lucide-react";
 
@@ -204,6 +205,15 @@ export default function AdminSettingsPage() {
               className="w-full px-3 py-2 border border-slate-300 rounded-lg"
             />
           </div>
+        </div>
+
+        <div className="text-xs text-slate-600 bg-purple-50 border border-purple-200 rounded-lg p-3 flex flex-wrap items-center justify-between gap-2">
+          <span>
+            Want automatic Global, National, State &amp; City news scanning with Fact-Checking?
+          </span>
+          <Link href="/admin/auto-news" className="font-bold text-red-700 hover:underline">
+            Open AI News Desk →
+          </Link>
         </div>
 
         <h2 className="text-base font-bold text-slate-900 border-b border-slate-100 pb-2 pt-2 flex items-center gap-2">

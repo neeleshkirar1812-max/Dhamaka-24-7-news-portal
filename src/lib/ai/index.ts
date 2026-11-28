@@ -24,9 +24,10 @@ import {
   AiTickerOutputSchema,
   AiTranslateInputSchema,
   AiTranslateOutputSchema,
+  AutoNewsFactCheckOutputSchema,
 } from "./schemas";
 
-export { AiServiceError, getAiStatus } from "./client";
+export { AiServiceError, generateEditorialImage, getAiStatus } from "./client";
 
 function wrapUntrusted(label: string, text: string): string {
   return `<untrusted_data label="${label}">\n${text}\n</untrusted_data>`;
@@ -218,4 +219,55 @@ export async function aiGenerateRevenueInsights(aggregatedMetrics: Record<string
     schema: AiRevenueInsightsOutputSchema,
     maxTokens: 900,
   });
+}
+
+export interface AutoNewsCandidateContext {
+  scope: string;
+  regionName: string;
+  primaryHeadline: string;
+  primarySummary: string;
+  primaryUrl: string;
+  primaryPublisher: string;
+  publishedAt?: string;
+  relatedReports: Array<{ publisher: string; title: string; summary: string; url: string }>;
+}
+
+export async function aiFactCheckAndWriteNews(ctx: AutoNewsCandidateContext) {
+  const payload = {
+    todayIso: new Date().toISOString(),
+    scope: ctx.scope,
+    regionOrCity: ctx.regionName,
+    primaryReport: {
+      publisher: ctx.primaryPublisher,
+      headline: ctx.primaryHeadline,
+      summary: ctx.primarySummary,
+      url: ctx.primaryUrl,
+      publishedAt: ctx.publishedAt ?? null,
+    },
+    corroboratingFeeds: ctx.relatedReports,
+  };
+
+  const result = await callAiStructured({
+    feature: "auto_news_fact_check",
+    system: PROMPTS.autoNewsFactCheck,
+    userContent: `Verify facts across multiple independent sources and draft an original Hindi news report.\n\n${wrapUntrusted(
+      "news_cluster",
+      JSON.stringify(payload, null, 2)
+    )}`,
+    schema: AutoNewsFactCheckOutputSchema,
+    maxTokens: 3200,
+    useSearch: true,
+  });
+
+  const safeSlug = slugify(result.slug || result.title) || `news-${Date.now()}`;
+  const safeSources = result.verifiedSources.filter((s) => /^https?:\/\//i.test(s.url));
+
+  return {
+    ...result,
+    confidence: Math.round(result.confidence),
+    slug: safeSlug,
+    contentHtml: sanitizeArticleHtml(result.contentHtml),
+    aiSummaryText: result.aiSummaryBullets.map((b) => `• ${stripHtml(b)}`).join("\n"),
+    verifiedSources: safeSources,
+  };
 }

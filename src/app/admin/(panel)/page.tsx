@@ -71,14 +71,22 @@ export default async function AdminDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-slate-900">Editorial Dashboard</h1>
-        <Link
-          href="/admin/articles/new"
-          className="px-4 py-2 bg-red-700 hover:bg-red-800 text-white text-sm font-semibold rounded-lg"
-        >
-          Write New Story
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/auto-news"
+            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white text-sm font-semibold rounded-lg"
+          >
+            AI News Desk
+          </Link>
+          <Link
+            href="/admin/articles/new"
+            className="px-4 py-2 bg-red-700 hover:bg-red-800 text-white text-sm font-semibold rounded-lg"
+          >
+            Write New Story
+          </Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
