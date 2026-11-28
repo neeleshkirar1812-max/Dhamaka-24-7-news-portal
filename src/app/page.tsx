@@ -139,7 +139,7 @@ export default async function HomePage() {
 
           {/* Trending & Ads Sidebar */}
           <aside className="lg:col-span-4 space-y-6">
-            <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <div className="bg-white rounded-xl border border-slate-200 p-2.5">
               <AdSlot placement="sidebar-top" />
             </div>
 
@@ -155,7 +155,7 @@ export default async function HomePage() {
               </div>
             </div>
 
-            <div className="sticky top-32 bg-white rounded-xl border border-slate-200 p-4">
+            <div className="sticky top-32 bg-white rounded-xl border border-slate-200 p-2.5">
               <AdSlot placement="sidebar-sticky" />
             </div>
           </aside>

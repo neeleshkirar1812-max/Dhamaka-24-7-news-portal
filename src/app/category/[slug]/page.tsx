@@ -109,7 +109,7 @@ export default async function CategoryPage({
           </div>
 
           <aside className="lg:col-span-4 space-y-6">
-            <div className="bg-white rounded-xl border border-slate-200 p-4">
+            <div className="bg-white rounded-xl border border-slate-200 p-2.5">
               <AdSlot placement="sidebar-top" />
             </div>
             <div className="bg-white rounded-xl border border-slate-200 p-4">
@@ -120,6 +120,9 @@ export default async function CategoryPage({
               {trending.map((art) => (
                 <ArticleCard key={art.id} article={art} variant="compact" />
               ))}
+            </div>
+            <div className="sticky top-32 bg-white rounded-xl border border-slate-200 p-2.5">
+              <AdSlot placement="sidebar-sticky" />
             </div>
           </aside>
         </div>

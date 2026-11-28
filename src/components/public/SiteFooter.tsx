@@ -8,7 +8,7 @@ export async function SiteFooter({ siteName }: { siteName?: string }) {
 
   return (
     <>
-      <footer className="bg-slate-900 text-slate-300 mt-12 border-t-4 border-red-700">
+      <footer className="bg-slate-900 text-slate-300 mt-12 border-t-4 border-red-700 pb-20 md:pb-0">
         <div className="max-w-7xl mx-auto px-4 py-10 grid grid-cols-1 sm:grid-cols-3 gap-8 text-sm">
           <div>
             <div className="text-xl font-extrabold text-white mb-2">{displayName}</div>
