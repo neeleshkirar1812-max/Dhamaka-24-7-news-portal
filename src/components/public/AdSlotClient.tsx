@@ -18,23 +18,23 @@ interface AdSlotClientProps {
 }
 
 const SLOT_CONTAINER_CLASS: Record<string, string> = {
-  "header-leaderboard": "min-h-[80px] w-full",
+  "header-leaderboard": "min-h-[50px] w-full",
   "sidebar-top": "min-h-[80px] w-full",
   "sidebar-sticky": "min-h-[80px] w-full",
-  "in-article-2": "min-h-[85px] w-full",
-  "in-article-5": "min-h-[85px] w-full",
-  "list-between": "min-h-[85px] w-full",
-  "footer-mobile": "min-h-[50px] w-full max-w-[440px] px-2",
+  "in-article-2": "min-h-[60px] w-full",
+  "in-article-5": "min-h-[60px] w-full",
+  "list-between": "min-h-[50px] w-full",
+  "footer-mobile": "min-h-[48px] w-full max-w-[440px] px-2",
 };
 
 const SLOT_IMG_CLASS: Record<string, string> = {
-  "header-leaderboard": "w-full h-[80px] sm:h-[140px] md:h-[180px] lg:h-[220px] object-cover object-center",
-  "sidebar-top": "w-full h-auto max-h-[260px] object-contain",
-  "sidebar-sticky": "w-full h-auto max-h-[560px] object-contain",
-  "in-article-2": "w-full h-[85px] sm:h-[125px] md:h-[150px] object-cover object-center",
-  "in-article-5": "w-full h-[85px] sm:h-[125px] md:h-[150px] object-cover object-center",
-  "list-between": "w-full h-[85px] sm:h-[125px] md:h-[155px] object-cover object-center",
-  "footer-mobile": "w-full h-[56px] sm:h-[64px] object-cover object-center",
+  "header-leaderboard": "w-full h-auto max-h-[220px] object-contain bg-slate-50",
+  "sidebar-top": "w-full h-auto max-h-[320px] object-contain",
+  "sidebar-sticky": "w-full h-auto max-h-[640px] object-contain",
+  "in-article-2": "w-full h-auto max-h-[180px] object-contain",
+  "in-article-5": "w-full h-auto max-h-[180px] object-contain",
+  "list-between": "w-full h-auto max-h-[160px] object-contain",
+  "footer-mobile": "w-full h-auto max-h-[72px] object-contain",
 };
 
 const ROTATION_INTERVAL_MS = 6000;
