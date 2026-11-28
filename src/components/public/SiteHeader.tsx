@@ -75,7 +75,7 @@ export async function SiteHeader({ activeSlug }: { activeSlug?: string }) {
         </div>
 
         {/* Header Leaderboard Ad Strip */}
-        <div className="hidden lg:flex justify-center pb-2.5 px-4">
+        <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 pb-3">
           <AdSlot placement="header-leaderboard" />
         </div>
       </header>

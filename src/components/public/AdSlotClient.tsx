@@ -18,7 +18,7 @@ interface AdSlotClientProps {
 }
 
 const SLOT_CONTAINER_CLASS: Record<string, string> = {
-  "header-leaderboard": "min-h-[90px] w-[728px] max-w-full",
+  "header-leaderboard": "min-h-[85px] w-full",
   "sidebar-top": "min-h-[120px] w-full",
   "sidebar-sticky": "min-h-[120px] w-full",
   "in-article-2": "min-h-[90px] w-full",
@@ -28,12 +28,12 @@ const SLOT_CONTAINER_CLASS: Record<string, string> = {
 };
 
 const SLOT_IMG_CLASS: Record<string, string> = {
-  "header-leaderboard": "max-h-[90px] w-auto max-w-full object-contain",
+  "header-leaderboard": "w-full h-[85px] sm:h-[150px] md:h-[190px] lg:h-[235px] object-cover object-center",
   "sidebar-top": "max-h-[250px] w-full object-contain",
   "sidebar-sticky": "max-h-[600px] w-full object-contain",
-  "in-article-2": "max-h-[140px] w-auto max-w-full object-contain",
-  "in-article-5": "max-h-[140px] w-auto max-w-full object-contain",
-  "list-between": "max-h-[120px] w-auto max-w-full object-contain",
+  "in-article-2": "max-h-[180px] w-full object-contain",
+  "in-article-5": "max-h-[180px] w-full object-contain",
+  "list-between": "max-h-[180px] w-full object-contain",
   "footer-mobile": "max-h-[50px] w-auto max-w-full object-contain",
 };
 
