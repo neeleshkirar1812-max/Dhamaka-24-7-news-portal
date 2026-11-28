@@ -174,26 +174,58 @@ async function loadLocalImageBase64(urlPath: string): Promise<{ data: string; mi
   }
 }
 
-function formatSafeAiError(err: unknown): { status?: number; detail: string } {
-  const rawStatus = (err as { status?: number })?.status;
-  const rawMsg = err instanceof Error ? err.message : String(err ?? "");
-  const scrubbed = rawMsg
+function formatSafeAiError(err: unknown): {
+  status?: number;
+  isInvalidKey: boolean;
+  detail: string;
+} {
+  const rawStatus =
+    (err as { status?: number; statusCode?: number })?.status ??
+    (err as { statusCode?: number })?.statusCode;
+  const rawBody = typeof (err as { body?: string })?.body === "string"
+    ? (err as { body: string }).body
+    : "";
+
+  let extractedMessage = "";
+  let isInvalidKey = rawStatus === 401 || rawStatus === 403;
+
+  if (rawBody) {
+    try {
+      const parsed = JSON.parse(rawBody) as unknown;
+      const item = Array.isArray(parsed) ? parsed[0] : parsed;
+      const errObj = (item as { error?: { message?: string; status?: string } })?.error;
+      if (errObj?.message) extractedMessage = errObj.message;
+      if (/API_KEY_INVALID|API key not valid|PERMISSION_DENIED/i.test(rawBody)) {
+        isInvalidKey = true;
+      }
+    } catch {
+      extractedMessage = rawBody;
+    }
+  }
+
+  if (!extractedMessage) {
+    extractedMessage = err instanceof Error ? err.message : String(err ?? "");
+  }
+
+  const scrubbed = extractedMessage
     .replace(/AIza[0-9A-Za-z_-]{10,}/g, "[REDACTED]")
     .replace(/AQ\.[0-9A-Za-z_.-]{10,}/g, "[REDACTED]")
     .replace(/sk-ant-[0-9A-Za-z_-]{10,}/g, "[REDACTED]")
     .replace(/([?&]key=)[^&\s]+/gi, "$1[REDACTED]")
     .replace(/\s+/g, " ")
     .trim()
-    .slice(0, 180);
+    .slice(0, 220);
 
-  if (rawStatus === 401 || rawStatus === 403) {
+  if (isInvalidKey) {
     return {
       status: rawStatus,
-      detail: `Gemini API key rejected (HTTP ${rawStatus}). Verify or re-save GEMINI_API_KEY in Admin -> Settings.`,
+      isInvalidKey: true,
+      detail: `Gemini API key invalid or rejected${rawStatus ? ` (HTTP ${rawStatus})` : ""}: ${scrubbed}. Open Admin -> Settings and save a valid Google Gemini API key.`,
     };
   }
   return {
     status: rawStatus,
+    isInvalidKey: false,
     detail: `AI service error${rawStatus ? ` (HTTP ${rawStatus})` : ""}: ${scrubbed || "temporarily unavailable"}`,
   };
 }
@@ -297,19 +329,18 @@ async function callGeminiText({
     } catch (err) {
       if (err instanceof AiServiceError) throw err;
       lastErr = err;
-      const status = (err as { status?: number })?.status;
+      const info = formatSafeAiError(err);
+      const status = info.status;
       if (status === 429) {
         throw new AiServiceError("AI rate limit reached. Please try again shortly.", "API_ERROR", 429);
       }
-      if (status === 401 || status === 403) {
-        const info = formatSafeAiError(err);
-        throw new AiServiceError(info.detail, "API_ERROR", status);
+      if (info.isInvalidKey) {
+        throw new AiServiceError(info.detail, "API_ERROR", status || 400);
       }
       // Retry fallback model/mode on 503 overload, 400 tool/param mismatch, or 404 model unavailability
       if (status === 503 || status === 400 || status === 404) {
         continue;
       }
-      const info = formatSafeAiError(err);
       throw new AiServiceError(info.detail, "API_ERROR", 502);
     }
   }

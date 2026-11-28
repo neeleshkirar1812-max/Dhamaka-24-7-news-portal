@@ -129,11 +129,11 @@ export async function getAutoNewsConfig(): Promise<AutoNewsConfig> {
 }
 
 /**
- * Populates default Global, National, State, and MP City topics once if table is empty.
+ * Populates default Global, National, State, and MP City topics once (guarded by v2 seed flag).
  */
 export async function ensureDefaultAutoNewsTopics(): Promise<void> {
-  const existing = await prisma.autoNewsTopic.count();
-  if (existing > 0) return;
+  const seeded = await prisma.setting.findUnique({ where: { key: "autoNewsDefaultsSeeded" } });
+  if (seeded?.value === "v2") return;
 
   const categories = await prisma.category.findMany({ orderBy: { order: "asc" } });
   if (categories.length === 0) return;
@@ -166,6 +166,12 @@ export async function ensureDefaultAutoNewsTopics(): Promise<void> {
       },
     });
   }
+
+  await prisma.setting.upsert({
+    where: { key: "autoNewsDefaultsSeeded" },
+    update: { value: "v2" },
+    create: { key: "autoNewsDefaultsSeeded", value: "v2" },
+  });
 }
 
 /**
