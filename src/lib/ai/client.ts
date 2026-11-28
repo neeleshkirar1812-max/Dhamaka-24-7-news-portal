@@ -27,20 +27,18 @@ export type AiUserInput =
 let cachedAnthropic: { key: string; client: Anthropic } | null = null;
 let cachedGemini: { key: string; client: GoogleGenAI } | null = null;
 
+function cleanKey(raw: string | undefined): string {
+  return (raw ?? "").trim().replace(/^["']|["']$/g, "").trim();
+}
+
 async function getStoredAiKeys(): Promise<{ geminiKey: string; anthropicKey: string }> {
-  if (env.geminiApiKey && env.anthropicApiKey) {
-    return {
-      geminiKey: env.geminiApiKey,
-      anthropicKey: env.anthropicApiKey,
-    };
-  }
   const rows = await prisma.setting.findMany({
     where: { key: { in: ["geminiApiKey", "anthropicApiKey"] } },
   });
-  const map = Object.fromEntries(rows.map((r) => [r.key, r.value.trim()]));
+  const map = Object.fromEntries(rows.map((r) => [r.key, cleanKey(r.value)]));
   return {
-    geminiKey: env.geminiApiKey || map.geminiApiKey || "",
-    anthropicKey: env.anthropicApiKey || map.anthropicApiKey || "",
+    geminiKey: map.geminiApiKey || cleanKey(env.geminiApiKey),
+    anthropicKey: map.anthropicApiKey || cleanKey(env.anthropicApiKey),
   };
 }
 
@@ -176,6 +174,30 @@ async function loadLocalImageBase64(urlPath: string): Promise<{ data: string; mi
   }
 }
 
+function formatSafeAiError(err: unknown): { status?: number; detail: string } {
+  const rawStatus = (err as { status?: number })?.status;
+  const rawMsg = err instanceof Error ? err.message : String(err ?? "");
+  const scrubbed = rawMsg
+    .replace(/AIza[0-9A-Za-z_-]{10,}/g, "[REDACTED]")
+    .replace(/AQ\.[0-9A-Za-z_.-]{10,}/g, "[REDACTED]")
+    .replace(/sk-ant-[0-9A-Za-z_-]{10,}/g, "[REDACTED]")
+    .replace(/([?&]key=)[^&\s]+/gi, "$1[REDACTED]")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 180);
+
+  if (rawStatus === 401 || rawStatus === 403) {
+    return {
+      status: rawStatus,
+      detail: `Gemini API key rejected (HTTP ${rawStatus}). Verify or re-save GEMINI_API_KEY in Admin -> Settings.`,
+    };
+  }
+  return {
+    status: rawStatus,
+    detail: `AI service error${rawStatus ? ` (HTTP ${rawStatus})` : ""}: ${scrubbed || "temporarily unavailable"}`,
+  };
+}
+
 async function callGeminiText({
   apiKey,
   feature,
@@ -230,18 +252,19 @@ async function callGeminiText({
     }
   }
 
-  const candidates: Array<{ model: string; withSearch: boolean }> =
-    model === "gemini-3.5-flash-lite"
-      ? [
-          { model: "gemini-3.5-flash-lite", withSearch: useSearch },
-          { model: "gemini-4-hydrogen", withSearch: useSearch },
-          ...(useSearch ? [{ model: "gemini-3.5-flash-lite", withSearch: false }] : []),
-        ]
-      : [
-          { model, withSearch: useSearch },
-          { model: "gemini-3.5-flash-lite", withSearch: useSearch },
-          ...(useSearch ? [{ model: "gemini-3.5-flash-lite", withSearch: false }] : []),
-        ];
+  const baseModels = Array.from(
+    new Set([
+      model,
+      "gemini-3.5-flash-lite",
+      "gemini-4-hydrogen",
+      "gemini-flash-lite-latest",
+      "gemini-flash-latest",
+    ])
+  );
+  const candidates: Array<{ model: string; withSearch: boolean }> = [
+    ...baseModels.map((m) => ({ model: m, withSearch: useSearch })),
+    ...(useSearch ? baseModels.slice(0, 2).map((m) => ({ model: m, withSearch: false })) : []),
+  ];
 
   let lastErr: unknown;
   for (const candidate of candidates) {
@@ -275,22 +298,27 @@ async function callGeminiText({
       if (err instanceof AiServiceError) throw err;
       lastErr = err;
       const status = (err as { status?: number })?.status;
-      // Retry fallback model/mode on temporary 503 demand or unsupported 400 tool parameter
-      if (status === 503 || status === 400) {
-        continue;
-      }
       if (status === 429) {
         throw new AiServiceError("AI rate limit reached. Please try again shortly.", "API_ERROR", 429);
       }
-      throw new AiServiceError("AI service is temporarily unavailable. Please try again.", "API_ERROR", 502);
+      if (status === 401 || status === 403) {
+        const info = formatSafeAiError(err);
+        throw new AiServiceError(info.detail, "API_ERROR", status);
+      }
+      // Retry fallback model/mode on 503 overload, 400 tool/param mismatch, or 404 model unavailability
+      if (status === 503 || status === 400 || status === 404) {
+        continue;
+      }
+      const info = formatSafeAiError(err);
+      throw new AiServiceError(info.detail, "API_ERROR", 502);
     }
   }
 
-  const finalStatus = (lastErr as { status?: number })?.status;
-  if (finalStatus === 429) {
+  const finalInfo = formatSafeAiError(lastErr);
+  if (finalInfo.status === 429) {
     throw new AiServiceError("AI rate limit reached. Please try again shortly.", "API_ERROR", 429);
   }
-  throw new AiServiceError("AI service is temporarily unavailable. Please try again.", "API_ERROR", 502);
+  throw new AiServiceError(finalInfo.detail, "API_ERROR", 502);
 }
 
 async function callAnthropicText({
